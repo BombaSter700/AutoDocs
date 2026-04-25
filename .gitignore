@@ -1,0 +1,15 @@
+# Кэш питона
+__pychache__/
+
+# Рабочее окружение
+venv
+.env
+
+*.pyc
+
+# Build компоненты
+SchoolApp.spec
+dist
+build
+data
+static
