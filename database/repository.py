@@ -4,12 +4,12 @@ Generic base repository providing CRUD operations over SQLAlchemy sessions.
 Usage example
 -------------
 from config import get_session
-from database.models import Staff
+from database import Employee
 from database.repository import BaseRepository
 
 with get_session() as session:
-    repo = BaseRepository(session, Staff)
-    staff_list = repo.get_all()
+    repo = BaseRepository(session, Employee)
+    employees = repo.get_all()
 """
 
 from typing import Generic, List, Optional, Type, TypeVar
