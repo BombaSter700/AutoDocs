@@ -1,6 +1,7 @@
 import pandas as pd
 from PyQt6.QtCore import QObject, pyqtSignal
 
+from ecxeptions import AppError, ExcelImportError, ExcelFileNotFoundError, ExcelInvalidFormatError
 from .base import BaseExcelParser, ImportResult
 
 
@@ -26,6 +27,14 @@ class ExcelImportWorker(QObject):
     def run(self) -> None:
         self.started.emit()
         try:
+            import os
+            if not os.path.exists(self._file_path):
+                raise ExcelFileNotFoundError(self._file_path)
+
+            ext = os.path.splitext(self._file_path)[1].lower()
+            if ext not in (".xlsx", ".xls"):
+                raise ExcelInvalidFormatError(self._file_path)
+
             self.progress.emit(10)
             df = pd.read_excel(self._file_path, header=None)
             self.progress.emit(50)
@@ -35,5 +44,9 @@ class ExcelImportWorker(QObject):
             self.progress.emit(100)
             self.finished.emit(result)
 
+        except ExcelImportError as e:
+            self.error.emit(e.user_message())
+        except AppError as e:
+            self.error.emit(e.user_message())
         except Exception as e:
-            self.error.emit(str(e))
+            self.error.emit(f"Неизвестная ошибка: {e}")

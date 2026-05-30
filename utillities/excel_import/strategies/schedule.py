@@ -4,6 +4,13 @@ from typing import Dict, List, Optional, Tuple
 import pandas as pd
 
 from config.database import engine
+from ecxeptions import (
+    ExcelHeaderNotFoundError,
+    ExcelColumnNotFoundError,
+    ExcelEntityNotFoundError,
+    ExcelParseError,
+    ExcelImportError,
+)
 from ..base import BaseExcelParser, ImportResult
 
 
@@ -39,107 +46,98 @@ class ScheduleExcelParser(BaseExcelParser):
         self._class_name = class_name
 
     def parse(self, df: pd.DataFrame) -> ImportResult:
-        try:
-            schedule_row_idx = None
-            for i in range(len(df)):
-                value = df.iloc[i, 0]
-                if isinstance(value, str) and "РАСПИСАНИЕ" in value.upper():
-                    schedule_row_idx = i
-                    break
+        schedule_row_idx = None
+        for i in range(len(df)):
+            value = df.iloc[i, 0]
+            if isinstance(value, str) and "РАСПИСАНИЕ" in value.upper():
+                schedule_row_idx = i
+                break
 
-            if schedule_row_idx is None:
-                return ImportResult(
-                    success=False,
-                    message="Не найден заголовок РАСПИСАНИЕ",
-                )
+        if schedule_row_idx is None:
+            raise ExcelHeaderNotFoundError("РАСПИСАНИЕ")
 
-            headers_row_idx = schedule_row_idx + 1
-            headers = df.iloc[headers_row_idx].tolist()
+        headers_row_idx = schedule_row_idx + 1
+        headers = df.iloc[headers_row_idx].tolist()
 
-            days_mapping = _get_days_mapping()
-            day_columns: Dict[str, int] = {}
+        days_mapping = _get_days_mapping()
+        day_columns: Dict[str, int] = {}
 
-            for idx, header in enumerate(headers):
-                if pd.isna(header):
-                    continue
-                header_str = str(header).strip()
-                if header_str in days_mapping:
-                    day_columns[header_str] = idx
+        for idx, header in enumerate(headers):
+            if pd.isna(header):
+                continue
+            header_str = str(header).strip()
+            if header_str in days_mapping:
+                day_columns[header_str] = idx
 
-            if not day_columns:
-                return ImportResult(
-                    success=False,
-                    message="Не найдены дни недели в заголовках",
-                )
-
-            raw_conn = engine.raw_connection()
-            try:
-                cursor = raw_conn.connection.cursor(dictionary=True)
-
-                school_class = self._find_class(cursor)
-                if not school_class:
-                    return ImportResult(
-                        success=False,
-                        message=f"Класс '{self._class_name}' не найден",
-                    )
-
-                lessons_to_create = []
-
-                for row_idx in range(headers_row_idx + 1, len(df)):
-                    row = df.iloc[row_idx]
-                    time_cell = row[0]
-
-                    if not isinstance(time_cell, str) or "-" not in time_cell:
-                        continue
-
-                    lesson_number = row_idx - headers_row_idx
-
-                    try:
-                        start_time, end_time = [t.strip() for t in time_cell.split("-")]
-                    except ValueError:
-                        continue
-
-                    for day_name, col_idx in day_columns.items():
-                        cell_value = row[col_idx]
-
-                        if pd.isna(cell_value) or not cell_value:
-                            continue
-
-                        subject_name, classroom = _parse_subject_and_classroom(cell_value)
-                        if not subject_name:
-                            continue
-
-                        subject = self._get_or_create_subject(cursor, subject_name)
-
-                        lessons_to_create.append({
-                            "class_id": school_class["id"],
-                            "subject_id": subject["id"],
-                            "classroom": classroom,
-                            "day_of_week": days_mapping[day_name],
-                            "lesson_number": lesson_number,
-                            "start_time": start_time,
-                            "end_time": end_time,
-                        })
-
-                self._save_lessons(cursor, lessons_to_create)
-                raw_conn.commit()
-
-            except Exception:
-                raw_conn.rollback()
-                raise
-            finally:
-                raw_conn.close()
-
-            return ImportResult(
-                success=True,
-                data={
-                    "class_name": self._class_name,
-                    "lessons_created": len(lessons_to_create),
-                },
+        if not day_columns:
+            raise ExcelColumnNotFoundError(
+                ", ".join(days_mapping.keys())
             )
 
-        except Exception as e:
-            return ImportResult(success=False, message=str(e))
+        raw_conn = engine.raw_connection()
+        try:
+            cursor = raw_conn.connection.cursor(dictionary=True)
+
+            school_class = self._find_class(cursor)
+            if not school_class:
+                raise ExcelEntityNotFoundError("Класс", self._class_name)
+
+            lessons_to_create = []
+
+            for row_idx in range(headers_row_idx + 1, len(df)):
+                row = df.iloc[row_idx]
+                time_cell = row[0]
+
+                if not isinstance(time_cell, str) or "-" not in time_cell:
+                    continue
+
+                lesson_number = row_idx - headers_row_idx
+
+                try:
+                    start_time, end_time = [t.strip() for t in time_cell.split("-")]
+                except ValueError:
+                    continue
+
+                for day_name, col_idx in day_columns.items():
+                    cell_value = row[col_idx]
+
+                    if pd.isna(cell_value) or not cell_value:
+                        continue
+
+                    subject_name, classroom = _parse_subject_and_classroom(cell_value)
+                    if not subject_name:
+                        raise ExcelParseError(
+                            row_idx, col_idx, str(cell_value)
+                        )
+
+                    subject = self._get_or_create_subject(cursor, subject_name)
+
+                    lessons_to_create.append({
+                        "class_id": school_class["id"],
+                        "subject_id": subject["id"],
+                        "classroom": classroom,
+                        "day_of_week": days_mapping[day_name],
+                        "lesson_number": lesson_number,
+                        "start_time": start_time,
+                        "end_time": end_time,
+                    })
+
+            self._save_lessons(cursor, lessons_to_create)
+            raw_conn.commit()
+
+        except Exception:
+            raw_conn.rollback()
+            raise
+        finally:
+            raw_conn.close()
+
+        return ImportResult(
+            success=True,
+            data={
+                "class_name": self._class_name,
+                "lessons_created": len(lessons_to_create),
+            },
+        )
 
     def _find_class(self, cursor) -> Optional[Dict]:
         if self._building_id:
