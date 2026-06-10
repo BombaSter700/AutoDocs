@@ -1,51 +1,35 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont
+from qfluentwidgets import InfoBadge, InfoBadgePosition, InfoLevel
 
-class StatusBadge(QWidget):
-    """Компонент для отображения статуса с цветовым кодированием"""
-    
-    STATUS_CONFIG = {
-        'planned': {'text': 'Запланировано', 'color': '#2e7d32', 'bg_color': '#e8f5e8'},
-        'in_progress': {'text': 'В процессе', 'color': '#f9a825', 'bg_color': '#fff8e1'},
-        'completed': {'text': 'Завершено', 'color': '#1565c0', 'bg_color': '#e3f2fd'},
-        'cancelled': {'text': 'Отменено', 'color': '#c62828', 'bg_color': '#ffebee'},
-        'postponed': {'text': 'Отложено', 'color': '#ef6c00', 'bg_color': '#fff3e0'}
+
+class StatusBadge(InfoBadge):
+    STATUS_MAP = {
+        "planned": InfoLevel.SUCCESS,
+        "in_progress": InfoLevel.WARNING,
+        "completed": InfoLevel.INFOAMTION,
+        "cancelled": InfoLevel.ERROR,
+        "postponed": InfoLevel.WARNING,
     }
-    
+
+    STATUS_TEXT = {
+        "planned": "Запланировано",
+        "in_progress": "В процессе",
+        "completed": "Завершено",
+        "cancelled": "Отменено",
+        "postponed": "Отложено",
+    }
+
     def __init__(self, status, parent=None):
-        super().__init__(parent)
-        self.status = status
-        self.setup_ui()
-        
-    def setup_ui(self):
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(6, 2, 6, 2)
-        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        self.label = QLabel()
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setFont(QFont("Arial", 9, QFont.Weight.Medium))
-        
-        self.update_status(self.status)
-        layout.addWidget(self.label)
-        
+        level = self.STATUS_MAP.get(status, InfoLevel.INFORMATION)
+        text = self.STATUS_TEXT.get(status, status)
+        super().__init__(text=text, level=level, parent=parent)
+        self._status = status
+
     def update_status(self, status):
-        """Обновление отображаемого статуса"""
-        self.status = status
-        config = self.STATUS_CONFIG.get(status, {'text': status, 'color': '#666', 'bg_color': '#f5f5f5'})
-        
-        self.label.setText(config['text'])
-        self.label.setStyleSheet(f"""
-            QLabel {{
-                color: {config['color']};
-                background-color: {config['bg_color']};
-                border: 1px solid {config['color']}20;
-                border-radius: 8px;
-                padding: 4px 8px;
-                font-weight: bold;
-            }}
-        """)
-    
+        self._status = status
+        level = self.STATUS_MAP.get(status, InfoLevel.INFORMATION)
+        text = self.STATUS_TEXT.get(status, status)
+        self.level = level
+        self.setText(text)
+
     def get_status(self):
-        return self.status
+        return self._status

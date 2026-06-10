@@ -1,25 +1,18 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, QGraphicsDropShadowEffect
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QFormLayout, QLabel
+from qfluentwidgets import CardWidget, BodyLabel
 
-class CardItem(QWidget):
+
+class CardItem(CardWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setup_ui()
         self.setFixedSize(300, 220)
+        self._setup_ui()
 
-    def setup_ui(self):
-        
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(6)
 
-        
-        self.container = QWidget()
-        container_layout = QVBoxLayout(self.container)
-        container_layout.setContentsMargins(12, 12, 12, 12)
-        container_layout.setSpacing(6)
-
-        
         top_layout = QHBoxLayout()
         top_layout.setSpacing(10)
 
@@ -35,11 +28,12 @@ class CardItem(QWidget):
         info_layout = QFormLayout()
         info_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
         info_layout.setFormAlignment(Qt.AlignmentFlag.AlignLeft)
+        info_layout.setSpacing(4)
 
-        self.name_label = QLabel("—")
-        self.group_label = QLabel("—")
-        self.age_label = QLabel("—")
-        self.locker = QLabel("—")
+        self.name_label = BodyLabel("—")
+        self.group_label = BodyLabel("—")
+        self.age_label = BodyLabel("—")
+        self.locker = BodyLabel("—")
 
         info_layout.addRow("ФИО:", self.name_label)
         info_layout.addRow("Группа:", self.group_label)
@@ -49,39 +43,15 @@ class CardItem(QWidget):
         top_layout.addWidget(self.photo_label)
         top_layout.addLayout(info_layout)
 
-        
-        self.contact_label = QLabel("<b>Контакты:</b>")
-        self.phone_label = QLabel("Телефон: —")
-        self.email_label = QLabel("Email: —")
+        self.contact_label = BodyLabel("<b>Контакты:</b>")
+        self.phone_label = BodyLabel("Телефон: —")
+        self.email_label = BodyLabel("Email: —")
 
-        container_layout.addLayout(top_layout)
-        container_layout.addWidget(self.contact_label)
-        container_layout.addWidget(self.phone_label)
-        container_layout.addWidget(self.email_label)
-        container_layout.addStretch()
-
-        
-        self.container.setStyleSheet("""
-            QWidget {
-                background-color: #FFFFFF;
-                border: 1px solid #DDD;
-                border-radius: 12px;
-            }
-            QLabel {
-                font-size: 13px;
-                color: #333333;
-            }
-        """)
-
-        
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(12)
-        shadow.setXOffset(0)
-        shadow.setYOffset(3)
-        shadow.setColor(QColor(0, 0, 0, 80))
-        self.container.setGraphicsEffect(shadow)
-
-        main_layout.addWidget(self.container)
+        layout.addLayout(top_layout)
+        layout.addWidget(self.contact_label)
+        layout.addWidget(self.phone_label)
+        layout.addWidget(self.email_label)
+        layout.addStretch()
 
     def load_data(self, student):
         self.name_label.setText(student.get("name", "—"))

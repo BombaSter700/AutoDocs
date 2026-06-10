@@ -1,10 +1,13 @@
 from .components.card_item import CardItem
-from .settings.window_manager import WindowManager
 from .components.filter_button import EventsFilter
 from .components.status_badge import StatusBadge
+from .components.pdf_viewer import PdfViewer
+from .settings.window_manager import WindowManager
+
 __all__ = [
-      "CardItem", 
-      "WindowManager", 
-      "EventsFilter",
-      "StatusBadge"      
-] 
+    "CardItem",
+    "EventsFilter",
+    "StatusBadge",
+    "PdfViewer",
+    "WindowManager",
+]

@@ -2,15 +2,17 @@ import tempfile
 import os
 from typing import Optional
 
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout,
-    QPushButton, QFileDialog, QMessageBox,
-    QComboBox,
-)
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout
 from PyQt6.QtPdf import QPdfDocument
 from PyQt6.QtPdfWidgets import QPdfView
 from PyQt6.QtPrintSupport import QPrinter, QPrintDialog
+from PyQt6.QtGui import QAction
 from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QWidget
+from qfluentwidgets import (
+    PushButton, ComboBox, ToolButton, FluentIcon as FIF,
+    InfoBar,
+)
 
 from ecxeptions import PdfError, PdfGenerationError, PdfLoadError
 from utillities.pdf_generation import BasePdfGenerator
@@ -31,13 +33,15 @@ class PdfViewer(QWidget):
 
         controls = QHBoxLayout()
 
-        open_btn = QPushButton("Открыть PDF")
+        open_btn = PushButton("Открыть PDF")
+        open_btn.setIcon(FIF.OPEN)
         open_btn.clicked.connect(self.open_pdf)
 
-        print_btn = QPushButton("Печать")
+        print_btn = PushButton("Печать")
+        print_btn.setIcon(FIF.PRINT)
         print_btn.clicked.connect(self.print_pdf)
 
-        self.zoom_combo = QComboBox()
+        self.zoom_combo = ComboBox()
         self.zoom_combo.addItems([
             "Fit Width", "Fit Page", "50%", "75%",
             "100%", "125%", "150%", "200%",
@@ -73,9 +77,10 @@ class PdfViewer(QWidget):
         if status != QPdfDocument.Status.Ready:
             if status == QPdfDocument.Status.Error:
                 err = PdfLoadError(file_path)
-                QMessageBox.warning(self, "Ошибка", err.user_message())
+                InfoBar.warning(self, "Ошибка", err.user_message())
 
     def open_pdf(self) -> None:
+        from PyQt6.QtWidgets import QFileDialog
         file_path, _ = QFileDialog.getOpenFileName(
             self, "Открыть PDF", "", "PDF файлы (*.pdf)"
         )
@@ -89,11 +94,11 @@ class PdfViewer(QWidget):
         try:
             generator.generate(pdf_path)
         except PdfError as e:
-            QMessageBox.critical(self, "PDF", e.user_message())
+            InfoBar.critical(self, "PDF", e.user_message())
             return
         except Exception as e:
             err = PdfGenerationError(detail=str(e))
-            QMessageBox.critical(self, "PDF", err.user_message())
+            InfoBar.critical(self, "PDF", err.user_message())
             return
 
         self.load_pdf(pdf_path)
@@ -104,7 +109,7 @@ class PdfViewer(QWidget):
 
     def print_pdf(self) -> None:
         if self.pdf_document.pageCount() == 0:
-            QMessageBox.information(self, "Печать", "PDF не загружен")
+            InfoBar.info(self, "Печать", "PDF не загружен")
             return
 
         printer = QPrinter(QPrinter.PrinterMode.HighResolution)
