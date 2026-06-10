@@ -7,10 +7,13 @@ from qfluentwidgets import (
     FluentIcon as FIF, PrimaryPushButton,
 )
 
+from ui.styles import apply_theme
+
 
 class WindowManager(QWidget):
     scale_changed = pyqtSignal(float)
     fullscreen_changed = pyqtSignal(bool)
+    theme_changed = pyqtSignal(str)
 
     def __init__(self, parent=None, app_name="MyApp", company_name="MyCompany"):
         super().__init__(parent)
@@ -28,12 +31,21 @@ class WindowManager(QWidget):
         layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         layout.setSpacing(12)
 
-        title = BodyLabel("Настройки окна")
+        title = BodyLabel("⚙️ Настройки окна")
         title.setStyleSheet("font-size: 16px; font-weight: bold; margin: 8px 0;")
         layout.addWidget(title)
 
-        # --- Масштаб ---
-        layout.addWidget(BodyLabel("Масштаб:"))
+        # ── Тема ──
+        layout.addWidget(BodyLabel("🎨 Тема оформления:"))
+        self.theme_combo = ComboBox()
+        self.theme_combo.addItems(["☀️ Светлая", "🌙 Тёмная", "🌓 Системная"])
+        self.theme_combo.currentIndexChanged.connect(self._on_theme_change)
+        layout.addWidget(self.theme_combo)
+
+        layout.addSpacing(8)
+
+        # ── Масштаб ──
+        layout.addWidget(BodyLabel("🔍 Масштаб:"))
 
         self.scale_combo = ComboBox()
         self.scale_combo.addItems(["75%", "100%", "125%", "150%", "175%", "200%"])
@@ -41,28 +53,28 @@ class WindowManager(QWidget):
         layout.addWidget(self.scale_combo)
 
         zoom_layout = QHBoxLayout()
-        self.zoom_out_btn = PushButton("Уменьшить")
+        self.zoom_out_btn = PushButton("−")
+        self.zoom_out_btn.setFixedWidth(40)
         self.zoom_out_btn.clicked.connect(self.zoom_out)
-        self.zoom_in_btn = PushButton("Увеличить")
+        self.zoom_in_btn = PushButton("+")
+        self.zoom_in_btn.setFixedWidth(40)
         self.zoom_in_btn.clicked.connect(self.zoom_in)
         zoom_layout.addWidget(self.zoom_out_btn)
+        zoom_layout.addWidget(BodyLabel("  Уменьшить / Увеличить  "))
         zoom_layout.addWidget(self.zoom_in_btn)
+        zoom_layout.addStretch()
         layout.addLayout(zoom_layout)
 
-        # --- Окно ---
+        # ── Окно ──
         layout.addSpacing(8)
 
-        self.fullscreen_btn = PrimaryPushButton("Полный экран (F11)")
+        self.fullscreen_btn = PrimaryPushButton("🖥️ Полный экран (F11)")
         self.fullscreen_btn.setIcon(FIF.FULL_SCREEN)
         self.fullscreen_btn.clicked.connect(self.toggle_fullscreen)
         layout.addWidget(self.fullscreen_btn)
 
-        self.normal_btn = PushButton("Оконный режим")
-        self.normal_btn.clicked.connect(self.normal_screen)
-        layout.addWidget(self.normal_btn)
-
         always_on_top_layout = QHBoxLayout()
-        always_on_top_layout.addWidget(BodyLabel("Поверх всех окон"))
+        always_on_top_layout.addWidget(BodyLabel("📌 Поверх всех окон"))
         always_on_top_layout.addStretch()
         self.always_on_top = SwitchButton()
         self.always_on_top.checkedChanged.connect(self.toggle_always_on_top)
@@ -71,11 +83,18 @@ class WindowManager(QWidget):
 
         layout.addSpacing(8)
 
-        reset_btn = PushButton("Сбросить настройки")
+        reset_btn = PushButton("🔄 Сбросить настройки")
         reset_btn.clicked.connect(self.reset_settings)
         layout.addWidget(reset_btn)
 
         layout.addStretch()
+
+    def _on_theme_change(self, index):
+        mapping = {0: "light", 1: "dark", 2: "auto"}
+        mode = mapping.get(index, "auto")
+        apply_theme(mode)
+        self.settings.setValue("theme_mode", mode)
+        self.theme_changed.emit(mode)
 
     def load_settings(self):
         scale = self.settings.value("window_scale", 1.0, type=float)
@@ -84,6 +103,10 @@ class WindowManager(QWidget):
 
         always_on_top = self.settings.value("always_on_top", False, type=bool)
         self.always_on_top.setChecked(always_on_top)
+
+        theme = self.settings.value("theme_mode", "auto")
+        mapping = {"light": 0, "dark": 1, "auto": 2}
+        self.theme_combo.setCurrentIndex(mapping.get(theme, 2))
 
     def save_settings(self):
         self.settings.setValue("window_scale", self.current_scale)
@@ -97,12 +120,8 @@ class WindowManager(QWidget):
 
     def _change_scale_combo(self, scale_text):
         scale_map = {
-            "75%": 0.75,
-            "100%": 1.0,
-            "125%": 1.25,
-            "150%": 1.5,
-            "175%": 1.75,
-            "200%": 2.0,
+            "75%": 0.75, "100%": 1.0, "125%": 1.25,
+            "150%": 1.5, "175%": 1.75, "200%": 2.0,
         }
         new_scale = scale_map.get(scale_text, 1.0)
         self.set_scale(new_scale)
@@ -146,6 +165,9 @@ class WindowManager(QWidget):
     def reset_settings(self):
         self.set_scale(1.0)
         self.always_on_top.setChecked(False)
+        self.theme_combo.setCurrentIndex(2)
+        apply_theme("auto")
+        self.settings.setValue("theme_mode", "auto")
         if self.parent_window:
             self.parent_window.showNormal()
 

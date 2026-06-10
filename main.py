@@ -1,10 +1,9 @@
 import sys
-from PyQt6.QtWidgets import QApplication
+
 from PyQt6.QtCore import Qt
-from qfluentwidgets import (
-    FluentTranslator, setTheme, Theme,
-    qconfig, QConfig,
-)
+from PyQt6.QtGui import QFont
+from PyQt6.QtWidgets import QApplication
+from qfluentwidgets import FluentTranslator
 from qfluentwidgets._rc.resource import qInitResources
 
 from config import init_db
@@ -16,9 +15,9 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    app.setFont(QFont("Segoe UI", 9))
 
     qInitResources()
-    setTheme(Theme.AUTO)
 
     translator = FluentTranslator()
     app.installTranslator(translator)
